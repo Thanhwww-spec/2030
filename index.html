@@ -1,268 +1,242 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quản Lý Sổ </title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 10px;
-      overflow: hidden;
-      background: #111;
-      color: #fff;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản Lý Sổ Nợ Dark + Ngày + Cuộn</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  html, body {
+    margin:0;
+    padding:0;
+    min-height:100%;
+    font-family: Arial, sans-serif;
+    color:#fff;
+    background:#111;
+    overflow-x: hidden;
+  }
 
-    canvas#bgCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: -1;
-    }
+  canvas#bgCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
 
-    h1 {
-      text-align: center;
-      font-size: 1.5rem;
-      margin-bottom: 20px;
-      text-shadow: 1px 1px 5px #000;
-    }
+  .container {
+    position: relative;
+    z-index: 1;
+    padding: 20px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
 
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 5px #000;
+  }
 
-    input, input[type="date"] {
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-      outline: none;
-      background: #222;
-      color: #fff;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.5);
-      font-size: 1rem;
-      transition: transform 0.2s;
-    }
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
 
-    input:focus {
-      transform: translateZ(5px);
-      box-shadow: 0 8px 12px rgba(0,0,0,0.7);
-    }
+  input, input[type="date"] {
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    outline: none;
+    background: #222;
+    color: #fff;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+    font-size: 1rem;
+  }
 
-    button {
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-      background: linear-gradient(45deg, #ff416c, #ff4b2b);
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.5);
-      transition: all 0.3s;
-    }
+  button {
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(45deg,#ff416c,#ff4b2b);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    box-shadow:0 4px 6px rgba(0,0,0,0.5);
+  }
 
-    button:hover {
-      transform: translateZ(5px) scale(1.05);
-      box-shadow: 0 8px 12px rgba(0,0,0,0.7);
-    }
+  table {
+    width:100%;
+    border-collapse: collapse;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow:0 10px 20px rgba(0,0,0,0.7);
+    background: #111;
+    font-size:0.9rem;
+    margin-bottom:20px;
+  }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border-radius: 15px;
-      overflow: hidden;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.7);
-      background: #111;
-      font-size: 0.9rem;
-    }
+  th, td {
+    padding:10px;
+    text-align:center;
+  }
 
-    th, td {
-      padding: 10px;
-      text-align: center;
-    }
+  th {
+    background: linear-gradient(45deg,#ff416c,#ff4b2b);
+    color:white;
+    text-shadow:1px 1px 2px #000;
+  }
 
-    th {
-      background: linear-gradient(45deg, #ff416c, #ff4b2b);
-      color: white;
-      text-shadow: 1px 1px 2px #000;
-    }
-
-    tfoot td {
-      font-weight: bold;
-      color: #fff;
-    }
-
-    @media(max-width: 480px){
-      input, button {
-        font-size: 0.9rem;
-        padding: 8px;
-      }
-      table {
-        font-size: 0.8rem;
-      }
-      th, td {
-        padding: 6px;
-      }
-    }
-  </style>
+  tfoot td {
+    font-weight:bold;
+  }
+</style>
 </head>
 <body>
 
 <canvas id="bgCanvas"></canvas>
 
-<h1>Quản Lý Sổ </h1>
+<div class="container">
+  <h1>Quản Lý Sổ Nợ</h1>
 
-<div class="input-group">
-  <input type="date" id="date">
-  <input type="text" id="content" placeholder="Nội dung">
-  <input type="number" id="amount" placeholder="Số tiền (VND)">
-  <button onclick="addDebt()">Thêm </button>
+  <div class="input-group">
+    <input type="date" id="date">
+    <input type="text" id="content" placeholder="Nội dung">
+    <input type="number" id="amount" placeholder="Số tiền (VND)">
+    <button onclick="addDebt()">Thêm nợ</button>
+  </div>
+
+  <table id="debtTable">
+    <thead>
+      <tr>
+        <th>Ngày</th>
+        <th>Nội dung</th>
+        <th>Số tiền (VND)</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">Tổng</td>
+        <td id="total">0₫</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
 </div>
 
-<table id="debtTable">
-  <thead>
-    <tr>
-      <th>Ngày</th>
-      <th>Nội dung</th>
-      <th>Số tiền (VND)</th>
-      <th>Hành động</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-  <tfoot>
-    <tr>
-      <td colspan="2">Tổng</td>
-      <td id="total">0₫</td>
-      <td></td>
-    </tr>
-  </tfoot>
-</table>
-
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAJnH6cnUcGKh62gRvxCeGf9PMuEq9IP6Y",
-    authDomain: "maylanh-458b5.firebaseapp.com",
-    projectId: "maylanh-458b5",
-    storageBucket: "maylanh-458b5.firebasestorage.app",
-    messagingSenderId: "473979950660",
-    appId: "1:473979950660:web:01fc5c16236faeaa940e11",
-    measurementId: "G-Z2PR67PHQM"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+const firebaseConfig = {
+  apiKey: "AIzaSyAJnH6cnUcGKh62gRvxCeGf9PMuEq9IP6Y",
+  authDomain: "maylanh-458b5.firebaseapp.com",
+  projectId: "maylanh-458b5",
+  storageBucket: "maylanh-458b5.firebasestorage.app",
+  messagingSenderId: "473979950660",
+  appId: "1:473979950660:web:01fc5c16236faeaa940e11",
+  measurementId: "G-Z2PR67PHQM"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-  const PASSWORD = "123456";
+const PASSWORD = "8888";
 
-  function addDebt() {
-    const content = document.getElementById('content').value.trim();
-    const amount = parseFloat(document.getElementById('amount').value);
-    const dateInput = document.getElementById('date').value;
-    if(content && !isNaN(amount) && dateInput) {
-      db.collection('debts').add({ date: dateInput, content, amount })
-        .then(() => {
-          document.getElementById('content').value = '';
-          document.getElementById('amount').value = '';
-          document.getElementById('date').value = '';
-        });
-    } else alert('Vui lòng nhập đầy đủ ngày, nội dung và số tiền hợp lệ!');
-  }
+// Date picker luôn hiển thị ngày hôm nay
+const dateInput = document.getElementById('date');
+const today = new Date().toISOString().split('T')[0];
+dateInput.value = today;
 
-  function renderDebts() {
-    db.collection('debts').onSnapshot(snapshot => {
-      const tbody = document.querySelector('#debtTable tbody');
-      tbody.innerHTML = '';
-      let total = 0;
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        total += data.amount;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${data.date}</td>
-          <td>${data.content}</td>
-          <td>${data.amount.toLocaleString('vi-VN')}₫</td>
-          <td>
-            <button onclick="editDebt('${doc.id}', '${data.content}', ${data.amount}, '${data.date}')">Sửa</button>
-            <button onclick="deleteDebt('${doc.id}')">Xóa</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
+function addDebt() {
+  const content = document.getElementById('content').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+  const dateValue = dateInput.value || today;
+  if(content && !isNaN(amount)) {
+    db.collection('debts').add({ date: dateValue, content, amount })
+      .then(() => {
+        document.getElementById('content').value = '';
+        document.getElementById('amount').value = '';
+        dateInput.value = today;
       });
-      document.getElementById('total').innerText = total.toLocaleString('vi-VN') + '₫';
+  } else alert('Vui lòng nhập đầy đủ ngày, nội dung và số tiền hợp lệ!');
+}
+
+function renderDebts() {
+  db.collection('debts').onSnapshot(snapshot => {
+    const tbody = document.querySelector('#debtTable tbody');
+    tbody.innerHTML = '';
+    let total = 0;
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      total += data.amount;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${data.date}</td>
+        <td>${data.content}</td>
+        <td>${data.amount.toLocaleString('vi-VN')}₫</td>
+        <td>
+          <button onclick="editDebt('${doc.id}','${data.content}',${data.amount},'${data.date}')">Sửa</button>
+          <button onclick="deleteDebt('${doc.id}')">Xóa</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
     });
-  }
-
-  function checkPassword() {
-    const pw = prompt("Nhập mật khẩu để thao tác:");
-    if(pw === PASSWORD) return true;
-    alert("Mật khẩu sai!");
-    return false;
-  }
-
-  function deleteDebt(id) {
-    if(checkPassword()) db.collection('debts').doc(id).delete();
-  }
-
-  function editDebt(id, content, amount, date) {
-    if(checkPassword()) {
-      const newDate = prompt('Chọn ngày:', date);
-      const newContent = prompt('Nội dung mới:', content);
-      const newAmount = prompt('Số tiền mới (VND):', amount);
-      if(newDate && newContent && !isNaN(parseFloat(newAmount))) {
-        db.collection('debts').doc(id).update({
-          date: newDate,
-          content: newContent,
-          amount: parseFloat(newAmount)
-        });
-      } else alert('Giá trị nhập không hợp lệ!');
-    }
-  }
-
-  renderDebts();
-
-  // Hiệu ứng nền particles
-  const canvas = document.getElementById('bgCanvas');
-  const ctx = canvas.getContext('2d');
-  let w = canvas.width = window.innerWidth;
-  let h = canvas.height = window.innerHeight;
-
-  const particles = [];
-  const particleCount = 100;
-
-  for(let i=0;i<particleCount;i++){
-    particles.push({
-      x: Math.random()*w,
-      y: Math.random()*h,
-      r: Math.random()*2+1,
-      dx: (Math.random()-0.5)*0.5,
-      dy: (Math.random()-0.5)*0.5
-    });
-  }
-
-  function animate(){
-    ctx.clearRect(0,0,w,h);
-    particles.forEach(p=>{
-      p.x += p.dx;
-      p.y += p.dy;
-      if(p.x<0||p.x>w) p.dx*=-1;
-      if(p.y<0||p.y>h) p.dy*=-1;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.fill();
-    });
-    requestAnimationFrame(animate);
-  }
-  animate();
-
-  window.addEventListener('resize', ()=>{
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
+    document.getElementById('total').innerText = total.toLocaleString('vi-VN') + '₫';
   });
+}
+
+function checkPassword() {
+  const pw = prompt("Nhập mật khẩu:");
+  if(pw === PASSWORD) return true;
+  alert("Mật khẩu sai!");
+  return false;
+}
+
+function deleteDebt(id) { if(checkPassword()) db.collection('debts').doc(id).delete(); }
+
+function editDebt(id, content, amount, date) {
+  if(checkPassword()){
+    const newDate = prompt('Chọn ngày:', date);
+    const newContent = prompt('Nội dung mới:', content);
+    const newAmount = prompt('Số tiền mới (VND):', amount);
+    if(newDate && newContent && !isNaN(parseFloat(newAmount))){
+      db.collection('debts').doc(id).update({ date:newDate, content:newContent, amount:parseFloat(newAmount) });
+    } else alert('Giá trị nhập không hợp lệ!');
+  }
+}
+
+renderDebts();
+
+// Hiệu ứng particles nền
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let w = canvas.width = window.innerWidth;
+let h = canvas.height = window.innerHeight;
+const particles = [];
+const particleCount = 100;
+for(let i=0;i<particleCount;i++){
+  particles.push({x:Math.random()*w, y:Math.random()*h, r:Math.random()*2+1, dx:(Math.random()-0.5)*0.5, dy:(Math.random()-0.5)*0.5});
+}
+function animate(){
+  ctx.clearRect(0,0,w,h);
+  particles.forEach(p=>{
+    p.x+=p.dx; p.y+=p.dy;
+    if(p.x<0||p.x>w)p.dx*=-1;
+    if(p.y<0||p.y>h)p.dy*=-1;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fill();
+  });
+  requestAnimationFrame(animate);
+}
+animate();
+window.addEventListener('resize',()=>{
+  w=canvas.width=window.innerWidth;
+  h=canvas.height=window.innerHeight;
+});
 </script>
 
 </body>
