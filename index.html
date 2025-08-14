@@ -1,201 +1,269 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QUẢN LÝ DOANH THU</title>
-    <style>
-        table { 
-            border-collapse: collapse; 
-            width: 80%; 
-            margin: 20px auto; 
-            font-family: Arial, sans-serif; 
-        }
-        th, td { 
-            border: 1px solid #ddd; 
-            padding: 10px; 
-            text-align: center; 
-        }
-        th { 
-            background-color: #4CAF50; 
-            color: white; 
-        }
-        tr:nth-child(even) { 
-            background-color: #f2f2f2; 
-        }
-        tr:nth-child(odd) { 
-            background-color: #ffffff; 
-        }
-        tr:hover { 
-            background-color: #ddd; 
-        }
-        .total { 
-            font-weight: bold; 
-            text-align: right; 
-            margin-right: 10%; 
-            font-size: 18px; 
-        }
-        button { 
-            padding: 5px 10px; 
-            cursor: pointer; 
-            background-color: #008CBA; 
-            color: white; 
-            border: none; 
-            border-radius: 4px; 
-        }
-        button:hover { 
-            background-color: #005f73; 
-        }
-        input, select { 
-            margin: 5px; 
-            padding: 5px; 
-            border-radius: 4px; 
-            border: 1px solid #ccc; 
-        }
-        h2 { 
-            text-align: center; 
-            color: #333; 
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Sổ </title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      overflow: hidden;
+      background: #111;
+      color: #fff;
+    }
+
+    canvas#bgCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      text-shadow: 1px 1px 5px #000;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input, input[type="date"] {
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      background: #222;
+      color: #fff;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+      font-size: 1rem;
+      transition: transform 0.2s;
+    }
+
+    input:focus {
+      transform: translateZ(5px);
+      box-shadow: 0 8px 12px rgba(0,0,0,0.7);
+    }
+
+    button {
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(45deg, #ff416c, #ff4b2b);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      transform: translateZ(5px) scale(1.05);
+      box-shadow: 0 8px 12px rgba(0,0,0,0.7);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.7);
+      background: #111;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background: linear-gradient(45deg, #ff416c, #ff4b2b);
+      color: white;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    tfoot td {
+      font-weight: bold;
+      color: #fff;
+    }
+
+    @media(max-width: 480px){
+      input, button {
+        font-size: 0.9rem;
+        padding: 8px;
+      }
+      table {
+        font-size: 0.8rem;
+      }
+      th, td {
+        padding: 6px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h2>QUẢN LÝ DOANH THU</h2>
-    <div style="text-align: center;">
-        <input type="date" id="date">
-        <input type="text" id="content" placeholder="Nội dung">
-        <input type="number" id="income" placeholder="Thu tiền" min="0">
-        <input type="number" id="expense" placeholder="Chi tiền" min="0">
-        <button onclick="addItem()">Thêm</button>
-    </div>
 
-    <table id="shoppingTable">
-        <thead>
-            <tr>
-                <th>Ngày</th>
-                <th>Nội dung</th>
-                <th>Thu tiền</th>
-                <th>Chi tiền</th>
-                <th>Chỉnh sửa</th>
-                <th>Xóa</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+<canvas id="bgCanvas"></canvas>
 
-    <p class="total">Tổng thu: <span id="totalIncome">0</span> VNĐ | Tổng chi: <span id="totalExpense">0</span> VNĐ | Cân đối: <span id="balance">0</span> VNĐ</p>
-    <div style="text-align: center;">
-        <button onclick="downloadExcel()">Tải dữ liệu về Excel</button>
-    </div>
+<h1>Quản Lý Sổ </h1>
 
-    <script>
-        const password = "12345"; // Mật khẩu để xóa và chỉnh sửa
-        let items = JSON.parse(localStorage.getItem('shoppingItems')) || [];
+<div class="input-group">
+  <input type="date" id="date">
+  <input type="text" id="content" placeholder="Nội dung">
+  <input type="number" id="amount" placeholder="Số tiền (VND)">
+  <button onclick="addDebt()">Thêm </button>
+</div>
 
-        // Load dữ liệu khi trang được tải
-        window.onload = function() {
-            renderTable();
-            calculateTotals();
-        };
+<table id="debtTable">
+  <thead>
+    <tr>
+      <th>Ngày</th>
+      <th>Nội dung</th>
+      <th>Số tiền (VND)</th>
+      <th>Hành động</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2">Tổng</td>
+      <td id="total">0₫</td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
 
-        function addItem() {
-            const date = document.getElementById('date').value;
-            const content = document.getElementById('content').value;
-            const income = parseFloat(document.getElementById('income').value) || 0;
-            const expense = parseFloat(document.getElementById('expense').value) || 0;
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJnH6cnUcGKh62gRvxCeGf9PMuEq9IP6Y",
+    authDomain: "maylanh-458b5.firebaseapp.com",
+    projectId: "maylanh-458b5",
+    storageBucket: "maylanh-458b5.firebasestorage.app",
+    messagingSenderId: "473979950660",
+    appId: "1:473979950660:web:01fc5c16236faeaa940e11",
+    measurementId: "G-Z2PR67PHQM"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-            if (date && content && (income > 0 || expense > 0)) {
-                items.push({ date, content, income, expense });
-                saveAndUpdate();
-                clearInputs();
-            } else {
-                alert("Vui lòng điền đầy đủ thông tin (ít nhất một trong thu hoặc chi phải lớn hơn 0)!");
-            }
-        }
+  const PASSWORD = "123456";
 
-        function deleteItem(index) {
-            const userPassword = prompt("Nhập mật khẩu để xóa:");
-            if (userPassword === password) {
-                items.splice(index, 1);
-                saveAndUpdate();
-            } else {
-                alert("Mật khẩu sai!");
-            }
-        }
+  function addDebt() {
+    const content = document.getElementById('content').value.trim();
+    const amount = parseFloat(document.getElementById('amount').value);
+    const dateInput = document.getElementById('date').value;
+    if(content && !isNaN(amount) && dateInput) {
+      db.collection('debts').add({ date: dateInput, content, amount })
+        .then(() => {
+          document.getElementById('content').value = '';
+          document.getElementById('amount').value = '';
+          document.getElementById('date').value = '';
+        });
+    } else alert('Vui lòng nhập đầy đủ ngày, nội dung và số tiền hợp lệ!');
+  }
 
-        function editItem(index) {
-            const userPassword = prompt("Nhập mật khẩu để chỉnh sửa:");
-            if (userPassword === password) {
-                const newDate = prompt("Nhập ngày mới:", items[index].date);
-                const newContent = prompt("Nhập nội dung mới:", items[index].content);
-                const newIncome = parseFloat(prompt("Nhập thu tiền mới:", items[index].income)) || 0;
-                const newExpense = parseFloat(prompt("Nhập chi tiền mới:", items[index].expense)) || 0;
+  function renderDebts() {
+    db.collection('debts').onSnapshot(snapshot => {
+      const tbody = document.querySelector('#debtTable tbody');
+      tbody.innerHTML = '';
+      let total = 0;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        total += data.amount;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${data.date}</td>
+          <td>${data.content}</td>
+          <td>${data.amount.toLocaleString('vi-VN')}₫</td>
+          <td>
+            <button onclick="editDebt('${doc.id}', '${data.content}', ${data.amount}, '${data.date}')">Sửa</button>
+            <button onclick="deleteDebt('${doc.id}')">Xóa</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('total').innerText = total.toLocaleString('vi-VN') + '₫';
+    });
+  }
 
-                if (newDate && newContent && (newIncome >= 0 || newExpense >= 0)) {
-                    items[index] = { date: newDate, content: newContent, income: newIncome, expense: newExpense };
-                    saveAndUpdate();
-                } else {
-                    alert("Thông tin không hợp lệ!");
-                }
-            } else {
-                alert("Mật khẩu sai!");
-            }
-        }
+  function checkPassword() {
+    const pw = prompt("Nhập mật khẩu để thao tác:");
+    if(pw === PASSWORD) return true;
+    alert("Mật khẩu sai!");
+    return false;
+  }
 
-        function renderTable() {
-            const tableBody = document.getElementById('tableBody');
-            tableBody.innerHTML = '';
-            items.forEach((item, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.date}</td>
-                    <td>${item.content}</td>
-                    <td>${item.income.toLocaleString()} VNĐ</td>
-                    <td>${item.expense.toLocaleString()} VNĐ</td>
-                    <td><button onclick="editItem(${index})">Chỉnh sửa</button></td>
-                    <td><button onclick="deleteItem(${index})">Xóa</button></td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
+  function deleteDebt(id) {
+    if(checkPassword()) db.collection('debts').doc(id).delete();
+  }
 
-        function calculateTotals() {
-            const totalIncome = items.reduce((sum, item) => sum + item.income, 0);
-            const totalExpense = items.reduce((sum, item) => sum + item.expense, 0);
-            const balance = totalIncome - totalExpense;
+  function editDebt(id, content, amount, date) {
+    if(checkPassword()) {
+      const newDate = prompt('Chọn ngày:', date);
+      const newContent = prompt('Nội dung mới:', content);
+      const newAmount = prompt('Số tiền mới (VND):', amount);
+      if(newDate && newContent && !isNaN(parseFloat(newAmount))) {
+        db.collection('debts').doc(id).update({
+          date: newDate,
+          content: newContent,
+          amount: parseFloat(newAmount)
+        });
+      } else alert('Giá trị nhập không hợp lệ!');
+    }
+  }
 
-            document.getElementById('totalIncome').textContent = totalIncome.toLocaleString();
-            document.getElementById('totalExpense').textContent = totalExpense.toLocaleString();
-            document.getElementById('balance').textContent = balance.toLocaleString();
-        }
+  renderDebts();
 
-        function saveAndUpdate() {
-            localStorage.setItem('shoppingItems', JSON.stringify(items));
-            renderTable();
-            calculateTotals();
-        }
+  // Hiệu ứng nền particles
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let w = canvas.width = window.innerWidth;
+  let h = canvas.height = window.innerHeight;
 
-        function clearInputs() {
-            document.getElementById('date').value = '';
-            document.getElementById('content').value = '';
-            document.getElementById('income').value = '';
-            document.getElementById('expense').value = '';
-        }
+  const particles = [];
+  const particleCount = 100;
 
-        function downloadExcel() {
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Ngày,Nội dung,Thu tiền,Chi tiền\n";
-            items.forEach(item => {
-                const row = `${item.date},${item.content},${item.income},${item.expense}`;
-                csvContent += row + "\n";
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "thu_chi_data.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    </script>
+  for(let i=0;i<particleCount;i++){
+    particles.push({
+      x: Math.random()*w,
+      y: Math.random()*h,
+      r: Math.random()*2+1,
+      dx: (Math.random()-0.5)*0.5,
+      dy: (Math.random()-0.5)*0.5
+    });
+  }
+
+  function animate(){
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p=>{
+      p.x += p.dx;
+      p.y += p.dy;
+      if(p.x<0||p.x>w) p.dx*=-1;
+      if(p.y<0||p.y>h) p.dy*=-1;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fill();
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  window.addEventListener('resize', ()=>{
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  });
+</script>
+
 </body>
 </html>
