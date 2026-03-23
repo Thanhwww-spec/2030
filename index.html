@@ -1,69 +1,178 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
-<title>ESP32 DHT11 + LED</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tính tiền + Hóa đơn</title>
+
 <style>
-  body { font-family: Arial; padding: 16px; }
-  button { padding: 10px 16px; margin: 6px; font-size: 16px; }
-  .big { font-size: 28px; }
+body{
+  font-family: Arial;
+  background:#eef5fb;
+  padding:10px;
+}
+.app{
+  max-width:430px;
+  margin:auto;
+  background:white;
+  border-radius:20px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+  overflow:hidden;
+}
+.header{
+  background:#1f4e79;
+  color:white;
+  padding:15px;
+  text-align:center;
+}
+.content{padding:15px;}
+
+.day{
+  background:#f7fbff;
+  padding:10px;
+  border-radius:12px;
+  margin-bottom:8px;
+}
+
+input{
+  width:70px;
+  padding:5px;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
+}
+
+.btn-main{background:#1f4e79;color:white;}
+.btn-print{background:#28a745;color:white;}
+
+.result{
+  margin-top:10px;
+  padding:10px;
+  background:#eaffea;
+  border-radius:12px;
+  text-align:center;
+}
+
 </style>
 </head>
+
 <body>
 
-<h2>ESP32 DHT11 + Điều khiển LED</h2>
+<div class="app">
+  <div class="header">
+    <h2>Tính tiền giúp việc</h2>
+  </div>
 
-<button onclick="connect()">Kết nối ESP32</button>
-<br><br>
+  <div class="content">
 
-<div>
-  🌡 Nhiệt độ: <span class="big" id="temp">--</span> °C<br>
-  💧 Độ ẩm: <span class="big" id="hum">--</span> %
+    Giá/giờ: <input type="number" id="rate" value="50000">
+
+    <div id="days"></div>
+
+    <button class="btn-main" onclick="tinhTien()">Tính tiền</button>
+    <button class="btn-print" onclick="inHoaDon()">In hóa đơn</button>
+
+    <div class="result" id="result"></div>
+
+  </div>
 </div>
 
-<br>
-
-<button onclick="ledOn()">BẬT LED</button>
-<button onclick="ledOff()">TẮT LED</button>
-
 <script>
-const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const CHAR_SENSOR  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const CHAR_LED     = '6e400004-b5a3-f393-e0a9-e50e24dcca9e';
+const days = ["Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7","Chủ nhật"];
 
-let charSensor, charLed;
+let html="";
+days.forEach((d,i)=>{
+  html+=`
+  <div class="day">
+    <b>${d}</b><br>
+    Giờ <input id="h${i}" type="number">
+    Phút <input id="m${i}" type="number">
+  </div>`;
+});
+document.getElementById("days").innerHTML=html;
 
-async function connect() {
-  const device = await navigator.bluetooth.requestDevice({
-    filters: [{ name: 'ESP32-DHT11-LED' }],
-    optionalServices: [SERVICE_UUID]
-  });
-
-  const server = await device.gatt.connect();
-  const service = await server.getPrimaryService(SERVICE_UUID);
-
-  charSensor = await service.getCharacteristic(CHAR_SENSOR);
-  charLed    = await service.getCharacteristic(CHAR_LED);
-
-  await charSensor.startNotifications();
-  charSensor.addEventListener(
-    'characteristicvaluechanged', e => {
-      const txt = new TextDecoder().decode(e.target.value);
-      const data = JSON.parse(txt);
-      document.getElementById('temp').innerText = data.t;
-      document.getElementById('hum').innerText  = data.h;
-    }
-  );
-
-  alert("Đã kết nối ESP32");
+// load data
+window.onload=function(){
+  if(localStorage.data){
+    let data=JSON.parse(localStorage.data);
+    document.getElementById("rate").value=data.rate;
+    data.days.forEach((d,i)=>{
+      document.getElementById("h"+i).value=d.h;
+      document.getElementById("m"+i).value=d.m;
+    });
+  }
 }
 
-function ledOn() {
-  if (charLed) charLed.writeValue(new TextEncoder().encode("ON"));
+function tinhTien(){
+  let rate=+document.getElementById("rate").value;
+  let total=0;
+  let data={rate:rate,days:[]};
+
+  for(let i=0;i<7;i++){
+    let h=+document.getElementById("h"+i).value||0;
+    let m=+document.getElementById("m"+i).value||0;
+
+    total+=h+(m/60);
+    data.days.push({h,m});
+  }
+
+  localStorage.data=JSON.stringify(data);
+
+  let money=total*rate;
+
+  document.getElementById("result").innerHTML=
+    "Tổng giờ: "+total.toFixed(2)+"<br>"+
+    "Tiền: "+money.toLocaleString()+" VNĐ";
 }
 
-function ledOff() {
-  if (charLed) charLed.writeValue(new TextEncoder().encode("OFF"));
+function inHoaDon(){
+  let rate=+document.getElementById("rate").value;
+  let total=0;
+  let rows="";
+
+  for(let i=0;i<7;i++){
+    let h=+document.getElementById("h"+i).value||0;
+    let m=+document.getElementById("m"+i).value||0;
+    let t=h+(m/60);
+    total+=t;
+
+    rows+=`<tr>
+      <td>${days[i]}</td>
+      <td>${h}h ${m}p</td>
+      <td>${(t*rate).toLocaleString()}</td>
+    </tr>`;
+  }
+
+  let money=total*rate;
+
+  let win=window.open("","","width=600,height=800");
+
+  win.document.write(`
+    <h2 style="text-align:center">HÓA ĐƠN GIÚP VIỆC</h2>
+    <p>Giá: ${rate.toLocaleString()} VNĐ/giờ</p>
+
+    <table border="1" width="100%" cellspacing="0" cellpadding="5">
+      <tr>
+        <th>Ngày</th>
+        <th>Thời gian</th>
+        <th>Tiền</th>
+      </tr>
+      ${rows}
+    </table>
+
+    <h3>Tổng giờ: ${total.toFixed(2)}</h3>
+    <h2>Tổng tiền: ${money.toLocaleString()} VNĐ</h2>
+
+    <script>
+      window.print();
+    <\/script>
+  `);
 }
 </script>
 
