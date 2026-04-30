@@ -1,1 +1,120 @@
-001100
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ESP32 Control</title>
+
+<style>
+body {
+  font-family: Arial;
+  text-align: center;
+  background: #111;
+  color: white;
+}
+h2 { color: #00ffcc; }
+
+button {
+  width: 160px;
+  height: 55px;
+  margin: 10px;
+  font-size: 18px;
+  border-radius: 12px;
+  border: none;
+}
+
+.on { background: green; }
+.off { background: red; }
+.connect { background: blue; }
+
+#status {
+  margin-top: 20px;
+  font-size: 18px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>ESP32-C3 Bluetooth Control</h2>
+
+<button class="connect" onclick="connect()">KẾT NỐI</button><br>
+
+<button class="on" onclick="sendData('1')">BẬT LED</button>
+<button class="off" onclick="sendData('0')">TẮT LED</button>
+
+<p id="status">🔴 Chưa kết nối</p>
+
+<script>
+let characteristic;
+
+// 🔊 tạo audio 1 lần duy nhất (fix lỗi mất tiếng)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// 🔓 mở khóa âm thanh
+document.addEventListener("click", () => {
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+});
+
+function beep(freq = 1000, time = 100) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.frequency.value = freq;
+  osc.type = "square";
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+
+  setTimeout(() => {
+    osc.stop();
+  }, time);
+}
+
+async function connect() {
+  try {
+    beep(800, 100);
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "ESP32_C3_TEST" }],
+      optionalServices: ["12345678-1234-1234-1234-1234567890ab"]
+    });
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService("12345678-1234-1234-1234-1234567890ab");
+    characteristic = await service.getCharacteristic("abcdefab-1234-1234-1234-abcdefabcdef");
+
+    document.getElementById("status").innerText = "🟢 Đã kết nối";
+    beep(1500, 200);
+
+    device.addEventListener('gattserverdisconnected', () => {
+      document.getElementById("status").innerText = "🔴 Mất kết nối";
+    });
+
+  } catch (error) {
+    alert("❌ Lỗi kết nối");
+  }
+}
+
+async function sendData(value) {
+  beep(1000, 80);
+
+  if (!characteristic) {
+    alert("⚠️ Chưa kết nối!");
+    return;
+  }
+
+  const encoder = new TextEncoder();
+  await characteristic.writeValue(encoder.encode(value));
+
+  document.getElementById("status").innerText =
+    value === "1" ? "💡 LED ĐANG BẬT" : "🌑 LED ĐANG TẮT";
+}
+</script>
+
+</body>
+</html>
