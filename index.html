@@ -1,119 +1,164 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
+
 <meta charset="UTF-8">
-<title>ESP32 Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ĐỒNG HỒ ĐIỆN ONLINE</title>
 
 <style>
-body {
-  font-family: Arial;
-  text-align: center;
-  background: #111;
-  color: white;
-}
-h2 { color: #00ffcc; }
 
-button {
-  width: 160px;
-  height: 55px;
-  margin: 10px;
-  font-size: 18px;
-  border-radius: 12px;
-  border: none;
+body{
+    margin:0;
+    padding:0;
+    background:#0f172a;
+    font-family:Arial;
+    color:white;
+    text-align:center;
 }
 
-.on { background: green; }
-.off { background: red; }
-.connect { background: blue; }
-
-#status {
-  margin-top: 20px;
-  font-size: 18px;
+.header{
+    background:#1e293b;
+    padding:20px;
+    font-size:35px;
+    font-weight:bold;
 }
+
+.container{
+    padding:20px;
+}
+
+.box{
+    background:#1e293b;
+    margin:15px auto;
+    padding:25px;
+    border-radius:20px;
+    width:90%;
+    max-width:400px;
+    box-shadow:0 0 15px #000;
+}
+
+.title{
+    font-size:25px;
+    margin-bottom:15px;
+}
+
+.value{
+    font-size:45px;
+    font-weight:bold;
+}
+
+.money{
+    background:#16a34a;
+}
+
+.reset{
+    background:red;
+    color:white;
+    border:none;
+    padding:20px;
+    font-size:25px;
+    border-radius:15px;
+    margin-top:20px;
+}
+
 </style>
+
 </head>
 
 <body>
 
-<h2>ESP32-C3 Bluetooth Control</h2>
+<div class="header">
+ĐỒNG HỒ ĐIỆN ONLINE
+</div>
 
-<button class="connect" onclick="connect()">KẾT NỐI</button><br>
+<div class="container">
 
-<button class="on" onclick="sendData('1')">BẬT LED</button>
-<button class="off" onclick="sendData('0')">TẮT LED</button>
+<div class="box">
+<div class="title">Điện áp</div>
+<div class="value" id="voltage">0</div>
+</div>
 
-<p id="status">🔴 Chưa kết nối</p>
+<div class="box">
+<div class="title">Dòng điện</div>
+<div class="value" id="current">0</div>
+</div>
+
+<div class="box">
+<div class="title">Công suất</div>
+<div class="value" id="power">0</div>
+</div>
+
+<div class="box">
+<div class="title">Điện năng</div>
+<div class="value" id="energy">0</div>
+</div>
+
+<div class="box money">
+<div class="title">Tiền điện</div>
+<div class="value" id="money">0</div>
+</div>
+
+<button onclick="resetEnergy()" class="reset">
+RESET ĐIỆN NĂNG
+</button>
+
+</div>
 
 <script>
-let characteristic;
 
-// 🔊 tạo audio 1 lần duy nhất (fix lỗi mất tiếng)
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const firebaseURL =
+"https://mayvl-bf237-default-rtdb.asia-southeast1.firebasedatabase.app/PZEM.json";
 
-// 🔓 mở khóa âm thanh
-document.addEventListener("click", () => {
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-});
+async function loadData()
+{
+    try{
 
-function beep(freq = 1000, time = 100) {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
+        const response =
+        await fetch(firebaseURL);
 
-  osc.frequency.value = freq;
-  osc.type = "square";
+        const data =
+        await response.json();
 
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
+        document.getElementById("voltage").innerHTML =
+        data.Voltage + " V";
 
-  osc.start();
+        document.getElementById("current").innerHTML =
+        data.Current + " A";
 
-  setTimeout(() => {
-    osc.stop();
-  }, time);
+        document.getElementById("power").innerHTML =
+        data.Power + " W";
+
+        document.getElementById("energy").innerHTML =
+        data.Energy + " kWh";
+
+        document.getElementById("money").innerHTML =
+        parseInt(data.Money).toLocaleString() + " đ";
+
+    }
+    catch(error)
+    {
+        console.log(error);
+    }
 }
 
-async function connect() {
-  try {
-    beep(800, 100);
-
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: "ESP32_C3_TEST" }],
-      optionalServices: ["12345678-1234-1234-1234-1234567890ab"]
+async function resetEnergy()
+{
+    await fetch(
+    "https://mayvl-bf237-default-rtdb.asia-southeast1.firebasedatabase.app/PZEM/Reset.json",
+    {
+        method:"PUT",
+        body:"1"
     });
 
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService("12345678-1234-1234-1234-1234567890ab");
-    characteristic = await service.getCharacteristic("abcdefab-1234-1234-1234-abcdefabcdef");
-
-    document.getElementById("status").innerText = "🟢 Đã kết nối";
-    beep(1500, 200);
-
-    device.addEventListener('gattserverdisconnected', () => {
-      document.getElementById("status").innerText = "🔴 Mất kết nối";
-    });
-
-  } catch (error) {
-    alert("❌ Lỗi kết nối");
-  }
+    alert("Đã gửi lệnh reset");
 }
 
-async function sendData(value) {
-  beep(1000, 80);
+loadData();
 
-  if (!characteristic) {
-    alert("⚠️ Chưa kết nối!");
-    return;
-  }
+setInterval(loadData, 3000);
 
-  const encoder = new TextEncoder();
-  await characteristic.writeValue(encoder.encode(value));
-
-  document.getElementById("status").innerText =
-    value === "1" ? "💡 LED ĐANG BẬT" : "🌑 LED ĐANG TẮT";
-}
 </script>
 
 </body>
